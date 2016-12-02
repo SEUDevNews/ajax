@@ -17,9 +17,93 @@
     1. 受同源策略的限制，不能发送跨域请求；
     2. 不能发送二进制文件（如图片、视频、音频等），只能发送纯文本数据；
     3. 发送和获取数据的过程中，无法实时获取进度信息，只能判断是否完成；
-####
-####
-####
+  * XMLHttpRequest Level 2中新增了以下功能:
+    1. 可以发送跨域请求，在服务端允许的情况下；   
+    2. 支持发送和接收二进制数据；    
+    3. 新增formData对象，支持发送表单数据；   
+    4. 发送和获取数据时，可以获取进度信息；   
+    5. 可以设置请求的超时时间；   
+    
+####开始准备
+  * 纯前端代码
+  * nginx反向代理服务器（前后端分离用）
+  * 后台2套接口（端口：1122，端口：2211）  PS：一份必须支持跨域请求
+  * IIS服务器（部署后台接口）
+  * chrome插件postman（接口测试）
+  * IE、chrome、firefox、Opera、safari、edge 6大浏览器，做兼容性测试
+  
+###XMLHttpRequest发送请求步骤
+  1. 实例化XMLHttpRequest对象（IE8-9是微软封装的ActiveXObject('Microsoft.XMLHTTP')）获得一个实例
+  2. 通过实例open一个请求，设置发送类型和接口以及同异步
+  3. 如有需要配置报文，以及各种事件（success，error，timeout等）
+  4. 调用实例的send方法，发送http/https的请求
+  5. 服务器回调，客户端接收，并做响应处理
+  
+####关键代码
+            //创建xhr对象
+            var xhr = tool.createXhrObject();
+
+            //针对某些特定版本的mozillar浏览器的BUG进行修正
+            xhr.overrideMimeType?(xhr.overrideMimeType("text/javascript")):(null);
+
+            //针对IE8的xhr做处理    PS：ie8下的xhr无xhr.onload事件，所以这里做判断
+            xhr.onload===undefined?(xhr.xhr_ie8=true):(xhr.xhr_ie8=false);
+
+            //参数处理（get和post）,包括xhr.open     get:拼接好url再open   post:先open，再设置其他参数
+            ajaxSetting.data === ""?(null):(xhr = tool.dealWithParam(ajaxSetting,this,xhr));
+
+            //设置超时时间（只有异步请求才有超时时间）
+            ajaxSetting.async?(xhr.timeout = ajaxSetting.time):(null);
+
+            //设置http协议的头部
+            tool.each(ajaxSetting.requestHeader,function(item,index){xhr.setRequestHeader(index,item)});
+
+            //onload事件（IE8下没有该事件）
+            xhr.onload = function(e) {
+                if(this.status == 200||this.status == 304){
+                    ajaxSetting.dataType.toUpperCase() == "JSON"?(ajaxSetting.success(JSON.parse(xhr.responseText))):(ajaxSetting.success(xhr.responseText));
+                }else{
+                    /*
+                     *  这边为了兼容IE8、9的问题，以及请求完成而造成的其他错误，比如404等
+                     *   如果跨域请求在IE8、9下跨域失败不走onerror方法
+                     *       其他支持了Level 2 的版本 直接走onerror
+                     * */
+                    ajaxSetting.error(e.currentTarget.status, e.currentTarget.statusText);
+                }
+            };
+
+            //xmlhttprequest每次变化一个状态所监控的事件（可拓展）
+            xhr.onreadystatechange = function(){
+                switch(xhr.readyState){
+                    case 1://打开
+                        //do something
+                        break;
+                    case 2://获取header
+                        //do something
+                        break;
+                    case 3://请求
+                        //do something
+                        break;
+                    case 4://完成
+                        //在ie8下面，无xhr的onload事件，只能放在此处处理回调结果
+                        xhr.xhr_ie8?((xhr.status == 200 || xhr.status == 304)?(ajaxSetting.dataType.toUpperCase() == "JSON"?(ajaxSetting.success(JSON.parse(xhr.responseText))):(ajaxSetting.success(xhr.responseText))):(null)):(null);
+                        break;
+                };
+            };
+
+            //ontimeout超时事件
+            xhr.ontimeout = function(e){
+                ajaxSetting.timeout(999,e?(e.type):("timeout"));   //IE8 没有e参数
+                xhr.abort();  //关闭请求
+            };
+
+            //错误事件，直接ajax失败，而不走onload事件
+            xhr.onerror = function(e){
+                ajaxSetting.error();
+            };
+
+            //发送请求
+            xhr.send((function(result){result == undefined?(result =null):(null);return result;})(this.postParam));
 ####
 ####
 ####
