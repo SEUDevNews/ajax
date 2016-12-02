@@ -104,7 +104,13 @@
 
             //发送请求
             xhr.send((function(result){result == undefined?(result =null):(null);return result;})(this.postParam));
-####
+            
+###测试代码
+####前端同源测试代码
+            ajax.post("/api/ajax1/ajaxT1/",{"name":"测试异步post请求","age":"success"},function(data){alert(data)});  //该接口在1122上
+####前端跨域测试代码
+            ajax.post_cross("http://192.168.0.3:2211/api/weixin/ajaxT2/",{"name":"测试跨域post请求","age":"success"},function(data){alert(data)});
+
 ####
 ####
 ####
